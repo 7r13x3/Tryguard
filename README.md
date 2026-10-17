@@ -21,3 +21,13 @@ TryGuard is a Python-based Endpoint Detection and Response (EDR) tool designed t
 1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/tryguard.git
+---
+
+## 🖥️ How to Use TryGuard
+
+Follow these steps to run the agent and protect your files:
+
+### 1. Launch the Application
+Open your terminal, navigate to the project folder, and run:
+```bash
+python tryguard.py
