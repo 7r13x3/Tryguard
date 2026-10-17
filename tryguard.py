@@ -8,6 +8,7 @@ import os
 import psutil
 import json
 import datetime
+import shutil
 from collections import Counter
 
 # ==========================================
@@ -29,12 +30,13 @@ def calculate_entropy(filepath):
         return 0.0
 
 # ==========================================
-# 2. THE EDR ENGINE: Scoring & Watching
+# 2. THE EDR ENGINE: Scoring, Watching & Vaulting
 # ==========================================
 class RansomwareDetector(FileSystemEventHandler):
     def __init__(self, gui_callback, target_folder):
         self.gui_callback = gui_callback
         self.target_folder = target_folder
+        self.vault_folder = os.path.join(target_folder, ".tryguard_vault")
         self.threat_score = 0
         self.alert_triggered = False
         self.affected_files = []
@@ -62,6 +64,9 @@ class RansomwareDetector(FileSystemEventHandler):
         if not event.is_directory and not self.alert_triggered:
             filename = os.path.basename(event.src_path)
             
+            # Ignore the vault folder
+            if ".tryguard_vault" in event.src_path: return
+
             if filename == ".tryguard_canary.txt":
                 self.add_score(100, "Canary Tripwire compromised!", "T1486")
                 return
@@ -81,15 +86,32 @@ class RansomwareDetector(FileSystemEventHandler):
     def trigger_alert(self, reason):
         self.alert_triggered = True
         self.gui_callback(f"\n🚨 [CRITICAL ALERT] {reason}", "red")
+        
+        # 1. KILL SWITCH
         self.gui_callback("Initiating Process Suspension Protocol...", "white")
-        
         suspended = suspend_ransomware()
-        
         if suspended:
             self.gui_callback("✅ SUCCESS: Malicious process frozen in memory.", "white")
-            self.generate_forensic_report()
         else:
             self.gui_callback("⚠️ WARNING: Could not find process to suspend.", "red")
+
+        # 2. RECOVERY VAULT
+        self.gui_callback("Initiating Recovery Vault...", "white")
+        restored = self.restore_vault()
+        if restored:
+            self.gui_callback("✅ SUCCESS: Encrypted files restored from backup.", "white")
+
+        # 3. FORENSIC REPORT
+        self.generate_forensic_report()
+
+    def restore_vault(self):
+        if os.path.exists(self.vault_folder):
+            try:
+                shutil.copytree(self.vault_folder, self.target_folder, dirs_exist_ok=True)
+                return True
+            except Exception as e:
+                self.gui_callback(f"Restore failed: {e}", "red")
+        return False
 
     def generate_forensic_report(self):
         report = {
@@ -183,6 +205,17 @@ def start_protection():
         is_running = True
         start_btn.configure(text="STOP PROTECTION", fg_color="#1A1A1A", hover_color="#333333", text_color="#FF4444", border_width=1, border_color="#FF4444")
         
+        # 1. CREATE RECOVERY VAULT
+        vault_path = os.path.join(target_path, ".tryguard_vault")
+        try:
+            if os.path.exists(vault_path):
+                shutil.rmtree(vault_path) # Clear old vault
+            shutil.copytree(target_path, vault_path, ignore=shutil.ignore_patterns('.tryguard_vault', '.tryguard_canary.txt'))
+            add_log("[+] Recovery Vault created (Files backed up).", "white")
+        except Exception as e:
+            add_log(f"[!] Failed to create vault: {e}", "red")
+
+        # 2. PLANT CANARY
         canary_path = os.path.join(target_path, ".tryguard_canary.txt")
         try:
             with open(canary_path, 'w') as f:
@@ -203,8 +236,13 @@ def start_protection():
         if observer:
             observer.stop()
             observer.join()
+            
+            # Cleanup
             canary_path = os.path.join(target_path, ".tryguard_canary.txt")
             if os.path.exists(canary_path): os.remove(canary_path)
+            
+            vault_path = os.path.join(target_path, ".tryguard_vault")
+            if os.path.exists(vault_path): shutil.rmtree(vault_path)
             
         start_btn.configure(text="START PROTECTION", fg_color="#222222", hover_color="#333333", text_color="#FFFFFF", border_width=0)
         add_log("\n[-] Protection stopped by user.", "grey")
