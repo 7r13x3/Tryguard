@@ -3,7 +3,7 @@
 **Automated Ransomware Early-Warning Agent & Active Defense System**
 
 ## 📖 Overview
-TryGuard is a Python-based Endpoint Detection and Response (EDR) tool designed to detect and neutralize ransomware in real-time. It moves beyond simple file monitoring by using behavioral analysis and active defense mechanisms to protect critical files.
+TryGuard is a Python-based Endpoint Detection and Response (EDR) tool designed to detect and neutralize ransomware in real time. It moves beyond simple file monitoring by using behavioral analysis and active defense mechanisms to protect critical files.
 
 ## ✨ Key Features
 - **Shannon Entropy Detection:** Identifies files being encrypted by calculating their data randomness.
