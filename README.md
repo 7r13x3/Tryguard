@@ -31,3 +31,4 @@ Follow these steps to run the agent and protect your files:
 Open your terminal, navigate to the project folder, and run:
 ```bash
 python tryguard.py
+A sleek, pure-black dashboard will open on your screen
